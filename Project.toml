@@ -1,0 +1,13 @@
+name = "OEC"
+uuid = "451cc0cd-c02f-4fb9-93ab-bb1e7fbdbc17"
+authors = ["Brian D. Klahn <briandk@virginia.edu> and contributors"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
