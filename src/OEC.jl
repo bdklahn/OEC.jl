@@ -1,20 +1,34 @@
 module OEC
 
+using Arrow
 using CSV
 using DataFrames
 using Dates
 using FromDigits
 using Glob
+using Logging
 using Mmap: mmap
 using ZipArchives: ZipReader, zip_names, zip_readentry, zip_openentry
 
-export unzip_sv, date_int_to_date, list_sv_zip_files, transform_sv
+export unzip_sv, date_int_to_date, list_sv_zip_files, transform_sv, write_arrow
 
 const scratchdir = "/scratch/$(get(ENV, "USER", nothing))"
 
 const BOL_data_scratchdir = joinpath(scratchdir, "temp/bi_dpi/data/OEC/bulk/Bill_of_Lading")
 
-const date_int_cols = Tuple(Symbol(c) for c in ("Estimate Arrival Date", "Actual Arrival Date"))
+include("constants.jl")
+
+function set_type(i, name)
+    if occursin(date_regex, string(name)) return String end
+    nothing
+end
+
+function set_pooled_cols(i, name)
+    if Symbol(name) in categoricals
+        return true
+    end
+    false
+end
 
 """
 # Introduction
@@ -49,11 +63,11 @@ function unzip_sv(path::AbstractString)
     archive = ZipReader(mmap(open(path)))
     files = zip_names(archive)
     @info "files in archive:" files
-    CSV.File(zip_readentry(archive, files[1]))
+    CSV.File(zip_readentry(archive, files[1]); stringtype=String, pool=set_pooled_cols, types=set_type)
 end
 
-function list_sv_zip_files(path::AbstractString)
-    glob("*.[t,c]sv.zip", path)
+function list_sv_zip_files(dirpath::AbstractString)
+    glob("*.[t,c]sv.zip", dirpath)
 end
 
 function transform_sv(csv::CSV.File)
@@ -65,6 +79,36 @@ function transform_sv(csv::CSV.File)
         df = transform!(df, c => ByRow((y, m, d) -> Date(y, m, d)) => :date)[!, Not(c)]
     end
     df
+end
+
+function write_arrow(
+    input::Union{Vector{<:AbstractString},AbstractString,Nothing},
+    outdir::AbstractString="./",
+    overwriteexisting::Bool=false,
+)
+    if input === nothing
+        return nothing
+    end
+    mkpath(outdir)
+    logfile_io = open(joinpath(outdir, "write_arrow_$(string(today())).log"), "a+")
+    global_logger(SimpleLogger(logfile_io))
+    if typeof(input) <: AbstractString
+        input = [input]
+    end
+    for p in input
+        outpath = joinpath(outdir, splitext(splitext(basename(p))[1])[1]) * ".arrow"
+        if overwriteexisting || !isfile(outpath)
+            @info "attempting to write " outpath
+            try
+                Arrow.write(outpath, unzip_sv(p); file=true)
+            catch e
+                @warn e
+            end
+            flush(logfile_io)
+            Base.GC.gc()
+        end
+    end
+    close(logfile_io)
 end
 
 end # module OEC
