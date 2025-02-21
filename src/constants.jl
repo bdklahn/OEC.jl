@@ -1,7 +1,7 @@
 const date_int_cols = Set(Symbol(c) for c in (
     "Estimate Arrival Date",
     "Actual Arrival Date",
-    ))
+))
 
 const categoricals = Set(Symbol(c) for c in (
     "Bill Type Code",
@@ -20,6 +20,7 @@ const categoricals = Set(Symbol(c) for c in (
     "Container Desc Code",
     "Container Load Status",
     "Container Type of Service",
+    "HS Code",
     "HS Code Sure Level",
     "Indicator of true supplier",
     "Indicator of true buyer",
@@ -31,6 +32,6 @@ const categoricals = Set(Symbol(c) for c in (
     "Weight_Unit",
     "Carrier_Code",
     "Foreign_Port",
-    ))
+))
 
 const date_regex = r"[D,d]ate"

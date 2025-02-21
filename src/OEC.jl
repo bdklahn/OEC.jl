@@ -63,7 +63,11 @@ function unzip_sv(path::AbstractString)
     archive = ZipReader(mmap(open(path)))
     files = zip_names(archive)
     @info "files in archive:" files
-    CSV.File(zip_readentry(archive, files[1]); stringtype=String, pool=set_pooled_cols, types=set_type)
+    zip_readentry(archive, files[1])
+end
+
+function read_sv(svfile)
+    CSV.File(svfile; stringtype=String, pool=false, types=set_type)
 end
 
 function list_sv_zip_files(dirpath::AbstractString)
@@ -100,7 +104,7 @@ function write_arrow(
         if overwriteexisting || !isfile(outpath)
             @info "attempting to write " outpath
             try
-                Arrow.write(outpath, unzip_sv(p); file=true)
+                Arrow.write(outpath, read_sv(unzip_sv(p)); file=true)
             catch e
                 @warn e
             end
