@@ -115,4 +115,29 @@ function write_arrow(
     close(logfile_io)
 end
 
+#eachindex
+#@inbounds
+
+function clean_nodelist(
+    df::AbstractDataFrame,
+    keycol::Symbol,
+    labelcol::Symbol,
+    metacol::Union{Symbol,Nothing}=nothing,
+    weightcol::Union{Symbol,Nothing}=nothing,
+)
+    uniquecols = [keycol, labelcol]
+    cols = uniquecols
+    if !isnothing(metacol) push!(cols, metacol) end
+    if !isnothing(weightcol) push!(cols, weightcol) end
+    df = df[!, cols]
+    @view df[completecases(df, uniquecols) .& .!nonunique(df, uniquecols), :]
+end
+
 end # module OEC
+
+function join_nodelists(
+    df_left::AbstractDataFrame,
+    df_right::AbstractDataFrame,
+)
+    innerjoin(df_left, df_right, on=names(df_left)[1], makeunique=true)
+end
