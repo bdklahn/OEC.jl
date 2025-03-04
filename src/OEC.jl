@@ -6,8 +6,10 @@ using DataFrames
 using Dates
 using FromDigits
 using Glob
+using HTTP
 using Logging
 using Mmap: mmap
+using URIs
 using ZipArchives: ZipReader, zip_names, zip_readentry, zip_openentry
 
 export unzip_sv, date_int_to_date, list_sv_zip_files, transform_sv, write_arrow
@@ -19,7 +21,9 @@ const BOL_data_scratchdir = joinpath(scratchdir, "temp/bi_dpi/data/OEC/bulk/Bill
 include("constants.jl")
 
 function set_type(i, name)
-    if occursin(date_regex, string(name)) return String end
+    if occursin(date_regex, string(name))
+        return String
+    end
     nothing
 end
 
@@ -127,10 +131,14 @@ function clean_nodelist(
 )
     uniquecols = [keycol, labelcol]
     cols = uniquecols
-    if !isnothing(metacol) push!(cols, metacol) end
-    if !isnothing(weightcol) push!(cols, weightcol) end
+    if !isnothing(metacol)
+        push!(cols, metacol)
+    end
+    if !isnothing(weightcol)
+        push!(cols, weightcol)
+    end
     df = df[!, cols]
-    @view df[completecases(df, uniquecols) .& .!nonunique(df, uniquecols), :]
+    @view df[completecases(df, uniquecols).&.!nonunique(df, uniquecols), :]
 end
 
 function join_nodelists(
@@ -139,5 +147,27 @@ function join_nodelists(
 )
     innerjoin(df_left, df_right, on=names(df_left)[1], makeunique=true)
 end
+
+function get_api_key()
+    env_var_name = "OEC_API_KEY"
+    key = get(ENV, env_var_name, nothing)
+    if isnothing(key)
+        @warn "No API set in the $env_var_name environment variable. Please enter your API key."
+        key = readline()
+        ENV[env_var_name] = key
+    end
+    key
+end
+
+function get_uri(path::AbstractString="/api/dload-proxy"; filepath::AbstractString="")
+    @assert !isempty(path)
+    @assert !isempty(filepath)
+    apikey = get_api_key()
+    path = joinpath("/", path)
+    filepath = escapeuri(filepath)
+    uri = URI(; scheme="https", host=domain, path=path, query="token=$apikey&file=$filepath")
+    uri
+end
+
 
 end # module OEC
