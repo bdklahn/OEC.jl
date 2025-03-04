@@ -169,5 +169,36 @@ function get_uri(path::AbstractString="/api/dload-proxy"; filepath::AbstractStri
     uri
 end
 
+function get_bulk_BOL_import(
+    start_year_month="2021-01", end_year_month=Dates.format(today(), "yyyy-mm");
+    outdir::Union{AbstractString, Nothing}="./data/OEC/bulk",
+    overwriteexisting::Bool=false,
+)
+    # USA_Exports_2021_01.csv.zip
+    if !isnothing(outdir) mkpath(outdir) end
+    date_month_range = Date(start_year_month):Month(1):Date(end_year_month)
+    date_month_range = [Dates.format(d, "yyyy_mm") for d in date_month_range]
+
+    for date_month in date_month_range
+        filepath = "bill_of_lading/BOL USA/Imports/USA_Imports_$date_month.csv.zip"
+        outpath = joinpath(outdir, filepath)
+        if isfile(outpath) && !overwriteexisting
+            @info "Skipping $filepath: already exists"
+            continue
+        end
+        uri = get_uri(filepath=filepath)
+        response = HTTP.get(uri)
+        if response.status == 200
+            if !isnothing(outdir)
+                open(outpath, "w") do f
+                    write(f, response.body)
+                end
+            end
+        else
+            @warn "Failed to download $filepath"
+        end
+    end
+
+end
 
 end # module OEC
