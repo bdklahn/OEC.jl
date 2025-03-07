@@ -175,18 +175,26 @@ function get_bulk_BOL_import(
     overwriteexisting::Bool=false,
 )
     # USA_Exports_2021_01.csv.zip
+    serverdir = "bill_of_lading/BOL USA/Imports"
+    outdir = joinpath(outdir, serverdir)
     mkpath(outdir)
+    @debug abspath(outdir)
     date_month_range = Date(start_year_month):Month(1):Date(end_year_month)
     date_month_range = [Dates.format(ym, "yyyy_mm") for ym in date_month_range]
 
     for year_month in date_month_range
-        filepath = "bill_of_lading/BOL USA/Imports/USA_Imports_$year_month.csv.zip"
-        outpath = joinpath(outdir, filepath)
+        year = split(year_month, "_")[1]
+        delim = year < "2024" ? "tsv" : "csv"
+        filename = "USA_Imports_$year_month.$delim.zip"
+        filepath = joinpath(serverdir, filename)
+        @debug filepath
+        outpath = joinpath(outdir, filename)
         if isfile(outpath) && !overwriteexisting
-            @info "Skipping $filepath: already exists"
+            @info "Skipping $filepath."
             continue
         end
         uri = get_uri(filepath=filepath)
+        @debug uri
         response = HTTP.get(uri)
         if response.status == 200
             open(outpath, "w") do f
